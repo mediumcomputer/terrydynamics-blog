@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terry Dynamics - AI Lab</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            --bg-primary: #0f172a; /* slate-900 */
+            --bg-secondary: rgba(30, 41, 59, 0.7); /* slate-800 */
+            --border-color: rgba(51, 65, 85, 0.6); /* slate-700 */
+            --text-primary: #e2e8f0; /* slate-200 */
+            --text-secondary: #94a3b8; /* slate-400 */
+            --text-muted: #64748b; /* slate-500 */
+            --accent-blue: #3b82f6;
+            --accent-cyan: #22d3ee;
+            --accent-green: #34d399;
+            --accent-purple: #a78bfa;
+            --accent-pink: #f472b6;
+            --accent-yellow: #facc15;
+            --accent-red: #f87171;
+        }
+
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-primary); color: var(--text-primary); scroll-behavior: smooth; }
+        .nav-bg { background-color: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); }
+        .btn { transition: all 0.2s ease-in-out; border-radius: 0.375rem; padding: 0.6rem 1.2rem; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-lg { padding: 0.8rem 1.8rem; font-size: 1.1rem; border-radius: 0.5rem; }
+        .btn-primary { background: linear-gradient(90deg, var(--accent-blue) 0%, var(--accent-cyan) 100%); color: white; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5); }
+        .btn-secondary { background-color: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); }
+        .btn-secondary:hover { background-color: rgba(51, 65, 85, 0.9); border-color: rgba(71, 85, 105, 0.8); }
+        .btn i { margin-right: 0.5rem; }
+        .status-indicator { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background-color: var(--accent-green); box-shadow: 0 0 12px var(--accent-green); margin-right: 7px; animation: pulse 1.8s infinite ease-in-out; }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(0.9); } }
+        @keyframes temperature-warning {
+            0% { border-color: var(--border-color); }
+            50% { border-color: #f87171; box-shadow: 0 0 15px rgba(248, 113, 113, 0.4); }
+            100% { border-color: var(--border-color); }
+        }
+        .content-card { background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 1.25rem; backdrop-filter: blur(6px); }
+        .stat-card { background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.75rem; backdrop-filter: blur(6px); display: flex; flex-direction: column; justify-content: space-between; }
+        .sparkline-container { height: 40px; width: 100%; margin-top: 0.25rem; }
+        .blog-card { transition: transform 0.2s ease-out, box-shadow 0.2s ease-out; border-radius: 0.75rem; }
+        .blog-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2); border-color: rgba(59, 130, 246, 0.5); }
+        a.text-link { color: var(--accent-blue); text-decoration: none; transition: color 0.2s; }
+        a.text-link:hover { color: var(--accent-cyan); text-decoration: underline; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); }
+        ::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.6); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(59, 130, 246, 0.8); }
+        section { margin-top: 3rem; padding-top: 1rem; }
+        .hidden-visually { display: none !important; }
+    </style>
+</head>
+<body class="text-slate-300 min-h-screen">
+    <!-- Navbar -->
+    <nav class="fixed w-full nav-bg border-b border-slate-700/50 z-50">
+        <div class="container mx-auto px-4 py-2">
+            <div class="flex justify-between items-center">
+                <a href="#" class="flex items-center">
+                    <span class="text-xl font-bold text-white"><span class="text-blue-400">Terry</span><span class="text-cyan-400">Dynamics</span></span>
+                    <span class="ml-3 px-2 py-1 bg-blue-900/30 rounded text-blue-300 text-xs font-semibold tracking-wide">AI LAB</span>
+                </a>
+                <div class="flex items-center space-x-4 text-sm">
+                    <!-- Keep Navbar simple, primary CTA is below -->
+                    <a href="#models" class="text-slate-300 hover:text-white">Models</a>
+                    <a href="#about" class="text-slate-300 hover:text-white">About</a>
+                    <a href="#updates" class="text-slate-300 hover:text-white">Updates</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="pt-20 pb-16">
+        <div class="container mx-auto px-4">
+
+            <!-- Hero Section -->
+            <section id="hero" class="text-center mt-0 pt-6">
+                <h1 class="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">
+                    Terry Dynamics <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">AI Lab</span>
+                </h1>
+                <p class="text-slate-400 text-lg md:text-xl mb-8 max-w-3xl mx-auto">
+                    Pushing the boundaries of self-hosted AI.
+                </p>
+                <a href="https://api.terrydynamics.com:8080" target="_blank" class="btn btn-primary btn-lg mb-8">
+                    <i class="fas fa-rocket"></i> Launch AI Lab
+                </a>
+
+                <!-- Sparkline Stats Integrated into Hero -->
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3 max-w-4xl mx-auto mb-4">
+                    <!-- CPU Stat Card -->
+                    <div class="stat-card">
+                        <div class="flex justify-between items-center text-xs text-slate-400"><span class="font-medium">CPU</span><span id="cpu-value" class="font-semibold text-white text-sm">--%</span></div>
+                        <div class="sparkline-container">
+                            <canvas id="cpu-sparkline-canvas" width="100" height="40"></canvas>
+                        </div>
+                    </div>
+                    <!-- Memory Stat Card -->
+                    <div class="stat-card">
+                         <div class="flex justify-between items-center text-xs text-slate-400"><span class="font-medium">Memory</span><span id="memory-value" class="font-semibold text-white text-sm">--%</span></div>
+                        <div class="sparkline-container">
+                            <canvas id="memory-sparkline-canvas" width="100" height="40"></canvas>
+                        </div>
+                    </div>
+                    <!-- GPU Stat Card -->
+                    <div class="stat-card">
+                        <div class="flex justify-between items-center text-xs text-slate-400"><span class="font-medium">GPU Load</span><span id="gpu-load-value" class="font-semibold text-white text-sm">--%</span></div>
+                        <div class="sparkline-container">
+                            <canvas id="gpu-load-sparkline-canvas" width="100" height="40"></canvas>
+                        </div>
+                    </div>
+                     <!-- VRAM Stat Card -->
+                    <div class="stat-card">
+                         <div class="flex justify-between items-center text-xs text-slate-400"><span class="font-medium">VRAM</span><span id="vram-value" class="font-semibold text-white text-sm">-- GB</span></div>
+                        <div class="sparkline-container">
+                            <canvas id="vram-sparkline-canvas" width="100" height="40"></canvas>
+                        </div>
+                    </div>
+                    <!-- Temperature Stat Card -->
+                    <div class="stat-card">
+                         <div class="flex justify-between items-center text-xs text-slate-400"><span class="font-medium">Temp</span><span id="temp-value" class="font-semibold text-white text-sm">--°F</span></div>
+                        <div class="sparkline-container">
+                            <canvas id="temp-sparkline-canvas" width="100" height="40"></canvas>
+                        </div>
+                    </div>
+                </div>
+                 <div class="flex justify-center items-center text-xs text-green-400">
+                    <div class="status-indicator" style="width: 7px; height: 7px;"></div>
+                    Live Status <span id="last-updated" class="ml-2 text-slate-500">(Connecting...)</span>
+                </div>
+            </section>
+
+            <!-- Live Models Section -->
+            <section id="models">
+                <h2 class="text-3xl font-semibold text-white mb-8 text-center">Available AI Models</h2>
+                <div id="live-models-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <div class="content-card text-center text-slate-400 col-span-full py-8">
+                        <i class="fas fa-spinner fa-spin mr-2"></i> Loading available models...
+                    </div>
+                </div>
+            </section>
+
+            <!-- Consolidated Tabbed Section -->
+            <section id="info-tabs" class="mt-12">
+                <div class="content-card max-w-4xl mx-auto">
+                    <div class="flex border-b border-slate-700/50 mb-6">
+                        <button class="tab-btn active px-4 py-2 text-white font-medium border-b-2 border-blue-500" data-tab="about">About</button>
+                        <button class="tab-btn px-4 py-2 text-slate-400 hover:text-white" data-tab="updates">Updates</button>
+                        <button class="tab-btn px-4 py-2 text-slate-400 hover:text-white" data-tab="system">System</button>
+                        <button class="tab-btn px-4 py-2 text-slate-400 hover:text-white" data-tab="tools">Tools</button>
+                    </div>
+                    
+                    <!-- About Tab -->
+                    <div class="tab-content active" id="about-content">
+                        <div class="text-center">
+                            <i class="fas fa-seedling text-5xl text-green-400 mb-4"></i>
+                            <p class="text-slate-300 text-lg">
+                                Project Avocado is our ongoing journey building a powerful, self-hosted AI platform. Inspired by the "garage startup" ethos, we're exploring the full stack – from bare metal Linux and GPU configuration to custom APIs and AI agent development – all on dedicated hardware.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Updates Tab -->
+                    <div class="tab-content hidden" id="updates-content">
+                        <div id="blog-posts-container" class="grid grid-cols-1 gap-6">
+                            <div class="text-center text-slate-400 py-8">
+                                <i class="fas fa-spinner fa-spin mr-2"></i> Loading updates...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Tab -->
+                    <div class="tab-content hidden" id="system-content">
+                        <div class="max-w-md mx-auto">
+                            <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+                                <i class="fas fa-server text-green-400 mr-2"></i> Hardware & Status
+                            </h3>
+                            <div class="space-y-3 text-sm">
+                                // ...existing system info content...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tools Tab -->
+                    <div class="tab-content hidden" id="tools-content">
+                        <div class="flex flex-wrap justify-center gap-4">
+                            <a href="https://api.terrydynamics.com:8080" target="_blank" class="btn btn-secondary">
+                                <i class="fas fa-comments text-blue-400"></i> AI Chat (Web UI)
+                            </a>
+                            <a href="https://api.terrydynamics.com/comfyui/" target="_blank" class="btn btn-secondary">
+                                <i class="fas fa-image text-pink-400"></i> ComfyUI (Images)
+                            </a>
+                            <a href="https://ollama.ai/" target="_blank" class="btn btn-secondary">
+                                <i class="fas fa-cube text-purple-400"></i> Ollama Project
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 border-t border-slate-800 py-6 mt-16">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-lg font-semibold mb-1">
+                <span class="text-blue-400">Terry</span><span class="text-cyan-400">Dynamics</span>
+            </p>
+            <p class="text-sm text-slate-500">© 2025 Terry Dynamics • Self-Hosted AI Exploration</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        // --- Chart Instances & Data Buffers ---
+        let cpuChart, memoryChart, gpuLoadChart, vramChart, tempChart;
+        const MAX_DATA_POINTS = 20;
+        let cpuData = Array(MAX_DATA_POINTS).fill(null);
+        let memoryData = Array(MAX_DATA_POINTS).fill(null);
+        let gpuLoadData = Array(MAX_DATA_POINTS).fill(null);
+        let vramData = Array(MAX_DATA_POINTS).fill(null);
+        let tempData = Array(MAX_DATA_POINTS).fill(null);
+        let chartLabels = Array(MAX_DATA_POINTS).fill('');
+
+        // --- Chart.js Sparkline Configuration ---
+        const sparklineOptions = (suggestedMaxY = 100, unit = '%') => ({
+            responsive: true, maintainAspectRatio: false, animation: false, // Disable animation for faster updates
+            plugins: { legend: { display: false }, tooltip: { enabled: true, mode: 'index', intersect: false, displayColors: false, backgroundColor: 'rgba(15, 23, 42, 0.9)', titleFont: { size: 0 }, bodyFont: { size: 10 }, padding: 4, caretSize: 0, cornerRadius: 3, callbacks: { label: (context) => `${parseFloat(context.raw || 0).toFixed(1)}${unit}` } } },
+            scales: { x: { display: false }, y: { display: false, beginAtZero: true, suggestedMax: suggestedMaxY } },
+            elements: { point: { radius: 0 }, line: { borderWidth: 1.5, tension: 0.3 } }
+        });
+
+        // --- Helper Function ---
+        function celsiusToFahrenheit(celsius) {
+             if (typeof celsius !== 'number') return null;
+             return (celsius * 9/5) + 32;
+        }
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log("DOM Loaded. Initializing dashboard v3.2...");
+            initSparklineCharts();
+            displayBlogPosts();
+
+            // Pre-populate buffer with initial data
+            for (let i = 0; i < BUFFER_SIZE; i++) {
+                await fetchDataAndUpdate();
+            }
+
+            // Set faster refresh interval
+            setInterval(fetchDataAndUpdate, 2000); // Update every 2 seconds
+            setupLegacyButtonListener();
+        });
+
+        function initSparklineCharts() {
+            Chart.defaults.color = 'rgba(148, 163, 184, 0.8)';
+            const getCtx = (id) => document.getElementById(id)?.getContext('2d');
+            const cpuCtx = getCtx('cpu-sparkline-canvas');
+            const memCtx = getCtx('memory-sparkline-canvas');
+            const gpuLoadCtx = getCtx('gpu-load-sparkline-canvas');
+            const vramCtx = getCtx('vram-sparkline-canvas');
+
+            if (!cpuCtx || !memCtx || !gpuLoadCtx || !vramCtx) { console.error("Sparkline canvas elements missing!"); return; }
+
+            try {
+                cpuChart = new Chart(cpuCtx, { type: 'line', data: { labels: chartLabels, datasets: [{ data: cpuData, borderColor: '#60a5fa' }] }, options: sparklineOptions(100, '%') });
+                memoryChart = new Chart(memCtx, { type: 'line', data: { labels: chartLabels, datasets: [{ data: memoryData, borderColor: '#34d399' }] }, options: sparklineOptions(100, '%') });
+                gpuLoadChart = new Chart(gpuLoadCtx, { type: 'line', data: { labels: chartLabels, datasets: [{ data: gpuLoadData, borderColor: '#a78bfa' }] }, options: sparklineOptions(100, '%') });
+                vramChart = new Chart(vramCtx, { type: 'line', data: { labels: chartLabels, datasets: [{ data: vramData, borderColor: '#f472b6' }] }, options: sparklineOptions(24, ' GB') }); // P40 = 24GB
+                tempChart = new Chart(getCtx('temp-sparkline-canvas'), { type: 'line', data: { labels: chartLabels, datasets: [{ data: tempData, borderColor: '#fbbf24' }] }, options: sparklineOptions(100, '°F') }); // Temperature in Fahrenheit
+                console.log("Sparkline charts initialized successfully.");
+            } catch (chartError) {
+                console.error("Error initializing Chart.js:", chartError);
+            }
+        }
+
+        // --- Tab Switching ---
+        document.querySelectorAll('.tab-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.remove('active', 'text-white', 'border-b-2', 'border-blue-500');
+                    btn.classList.add('text-slate-400');
+                });
+                button.classList.add('active', 'text-white', 'border-b-2', 'border-blue-500');
+                button.classList.remove('text-slate-400');
+                
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.add('hidden');
+                });
+                document.getElementById(`${button.dataset.tab}-content`).classList.remove('hidden');
+            });
+        });
+
+        // --- Data Buffer for Sparklines ---
+        const BUFFER_SIZE = 90; // 3 minutes at 2-second intervals
+        const dataBuffer = {
+            cpu: Array(BUFFER_SIZE).fill(null),
+            memory: Array(BUFFER_SIZE).fill(null),
+            gpuLoad: Array(BUFFER_SIZE).fill(null),
+            vram: Array(BUFFER_SIZE).fill(null),
+            temp: Array(BUFFER_SIZE).fill(null),
+            bufferIndex: 0,
+            isInitialized: false
+        };
+
+        function updateDataBuffer(data) {
+            const gpu = data.gpu;
+            const system = data.system;
+
+            dataBuffer.cpu[dataBuffer.bufferIndex] = system.cpu_percent;
+            dataBuffer.memory[dataBuffer.bufferIndex] = system.memory_percent;
+            dataBuffer.gpuLoad[dataBuffer.bufferIndex] = gpu.gpu_utilization_percent;
+            dataBuffer.vram[dataBuffer.bufferIndex] = (gpu.memory_used_bytes / (1024**3));
+            const tempF = celsiusToFahrenheit(gpu.temperature_celsius);
+            dataBuffer.temp[dataBuffer.bufferIndex] = tempF;
+
+            dataBuffer.bufferIndex = (dataBuffer.bufferIndex + 1) % BUFFER_SIZE;
+            if (!dataBuffer.isInitialized && dataBuffer.bufferIndex === 0) {
+                dataBuffer.isInitialized = true;
+            }
+        }
+
+        function getLastNDataPoints(array, n) {
+            if (!array || array.length === 0) return Array(n).fill(null);
+            const validData = array.filter(x => x !== null);
+            if (validData.length === 0) return Array(n).fill(null);
+            
+            // If we don't have enough data, repeat the last known value
+            const lastValue = validData[validData.length - 1];
+            if (validData.length < n) {
+                return [...validData, ...Array(n - validData.length).fill(lastValue)];
+            }
+            
+            return validData.slice(-n);
+        }
+
+        // --- Enhanced Update Functions ---
+        async function fetchDataAndUpdate() {
+            console.log("Fetching data...");
+            try {
+                const [statsResponse, modelsResponse] = await Promise.all([
+                    fetch('/api/gpu_stats'),
+                    fetch('/api/ollama_models')
+                ]);
+
+                if (!statsResponse.ok || !modelsResponse.ok) throw new Error("API Error");
+                
+                const statsData = await statsResponse.json();
+                const modelsData = await modelsResponse.json();
+
+                updateDataBuffer(statsData);
+                updateSystemInfo(statsData);
+                updateSparklines(statsData);
+                displayOllamaModels(modelsData);
+                
+                setText('last-updated', `(${new Date().toLocaleTimeString()})`);
+            } catch (error) {
+                console.error("Data fetch cycle error:", error);
+            }
+        }
+
+        function updateSparklines(data) {
+            if (!cpuChart || !memoryChart || !gpuLoadChart || !vramChart || !tempChart) { 
+                console.warn("Charts not ready for update"); 
+                return; 
+            }
+
+            // Get last 20 points from buffer
+            cpuData = getLastNDataPoints(dataBuffer.cpu, MAX_DATA_POINTS);
+            memoryData = getLastNDataPoints(dataBuffer.memory, MAX_DATA_POINTS);
+            gpuLoadData = getLastNDataPoints(dataBuffer.gpuLoad, MAX_DATA_POINTS);
+            vramData = getLastNDataPoints(dataBuffer.vram, MAX_DATA_POINTS);
+            tempData = getLastNDataPoints(dataBuffer.temp, MAX_DATA_POINTS);
+
+            // Update current values
+            const currentTemp = tempData[tempData.length - 1];
+            setText('temp-value', currentTemp !== null ? `${currentTemp.toFixed(1)}°F` : 'N/A');
+
+            // Temperature warning effect
+            const tempCard = document.querySelector('.stat-card:last-child');
+            if (currentTemp > 180) {
+                tempCard.style.animation = 'temperature-warning 2s infinite';
+                if (!tempCard.style.getPropertyValue('--original-border-color')) {
+                    tempCard.style.setProperty('--original-border-color', getComputedStyle(tempCard).borderColor);
+                }
+            } else {
+                tempCard.style.animation = 'none';
+                const originalColor = tempCard.style.getPropertyValue('--original-border-color');
+                if (originalColor) {
+                    tempCard.style.borderColor = originalColor;
+                }
+            }
+
+            // Update other values
+            setText('cpu-value', cpuData[cpuData.length - 1]?.toFixed(1) + '%' || 'N/A');
+            setText('memory-value', memoryData[memoryData.length - 1]?.toFixed(1) + '%' || 'N/A');
+            setText('gpu-load-value', gpuLoadData[gpuLoadData.length - 1]?.toFixed(1) + '%' || 'N/A');
+            setText('vram-value', vramData[vramData.length - 1]?.toFixed(1) + ' GB' || 'N/A');
+
+            // Update charts
+            try {
+                [cpuChart, memoryChart, gpuLoadChart, vramChart, tempChart].forEach(chart => {
+                    if (chart && chart.data && chart.data.datasets) {
+                        chart.data.datasets[0].data = chart === vramChart ? vramData :
+                                                    chart === tempChart ? tempData :
+                                                    chart === cpuChart ? cpuData :
+                                                    chart === memoryChart ? memoryData :
+                                                    gpuLoadData;
+                        chart.update('none');
+                    }
+                });
+            } catch (error) {
+                console.error("Error updating sparkline charts:", error);
+            }
+        }
+
+        // --- Data Fetching and Updating ---
+        async function fetchSystemStats() {
+            const statsEndpoint = '/api/gpu_stats';
+            try {
+                const response = await fetch(statsEndpoint);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                if (!data || typeof data !== 'object' || !data.gpu || !data.system) { throw new Error("Invalid data structure"); }
+                console.log("Stats Data OK:", data); // Log success
+                updateSystemInfo(data);
+                updateSparklines(data);
+                setText('last-updated', `(${new Date().toLocaleTimeString()})`);
+            } catch (error) {
+                console.error(`Error fetching/processing system stats:`, error);
+                setText('last-updated', `(Stats Error)`);
+                ['cpu-value', 'memory-value', 'gpu-load-value', 'vram-value', 'gpu-name', 'gpu-temp', 'ram-info', 'disk-info', 'system-uptime'].forEach(id => setText(id, 'N/A'));
+                 // Clear chart data on error
+                 if(cpuChart) { [cpuData, memoryData, gpuLoadData, vramData].forEach(arr => arr.fill(null)); cpuChart.update(); memoryChart.update(); gpuLoadChart.update(); vramChart.update(); }
+            }
+        }
+
+         async function fetchOllamaModels() {
+            const modelsEndpoint = '/api/ollama_models';
+            try {
+                const response = await fetch(modelsEndpoint);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const models = await response.json();
+                if (!Array.isArray(models)) { throw new Error("Invalid data format"); }
+                console.log("Models Data OK:", models); // Log success
+                displayOllamaModels(models);
+            } catch (error) {
+                 console.error(`Error fetching/processing Ollama models:`, error);
+                 const listElement = document.getElementById('live-models-list');
+                 if (listElement) listElement.innerHTML = `<div class="content-card text-center text-red-400 col-span-full py-8">Failed to load model list. <br><span class="text-xs text-slate-500">(${error.message})</span></div>`;
+            }
+        }
+
+        // --- UI Update Functions ---
+        function updateSystemInfo(data) {
+            const gpu = data.gpu;
+            const system = data.system;
+
+            setText('gpu-name', gpu.name || 'N/A');
+            // ** TEMP CONVERSION **
+            const tempC = gpu.temperature_celsius;
+            const tempF = celsiusToFahrenheit(tempC);
+            setText('gpu-temp', tempF !== null ? `${tempF.toFixed(1)}°F` : 'N/A'); // Display F
+
+            setText('ram-info', system.memory_used_gb !== undefined && system.memory_total_gb !== undefined ? `${system.memory_used_gb.toFixed(1)} / ${system.memory_total_gb.toFixed(0)} GB` : 'N/A');
+            setText('disk-info', system.disk_percent !== undefined && system.disk_total_gb !== undefined ? `${system.disk_percent.toFixed(1)}% of ${system.disk_total_gb.toFixed(0)}GB` : 'N/A');
+            setText('system-uptime', system.uptime || 'N/A');
+        }
+
+        function displayOllamaModels(models) {
+            const listElement = document.getElementById('live-models-list');
+            if (!listElement) return;
+            if (!models || models.length === 0) { listElement.innerHTML = `<div class="content-card text-center text-slate-400 col-span-full py-8">No active models found.</div>`; return; }
+            
+            // Map of model capabilities/strengths
+            const modelStrengths = {
+                'avocado-llava-1.6': 'Multimodal Understanding',
+                'avocado-wizardlm-13b': 'Advanced Reasoning',
+                'gemma3': 'General Intelligence',
+                'llava': 'Visual Intelligence'
+            };
+
+            let html = '';
+            models.forEach(model => {
+                const modelBase = Object.keys(modelStrengths).find(base => model.name.startsWith(base));
+                const strength = modelStrengths[modelBase] || 'General Purpose';
+                const sizeGB = (typeof model.size_gb === 'number' && model.size_gb > 0) ? `${model.size_gb.toFixed(2)} GB` : 'N/A';
+
+                html += `
+                    <div class="content-card flex flex-col h-full transform transition hover:scale-[1.02] hover:shadow-lg">
+                        <div class="bg-slate-800/50 -mx-5 -mt-5 px-5 py-3 rounded-t-lg border-b border-slate-700/50">
+                            <h4 class="text-lg font-bold text-white mb-1">${strength}</h4>
+                            <div class="flex items-center justify-between">
+                                <p class="text-sm font-medium text-slate-400">${model.name}</p>
+                                <span class="text-xs px-2 py-1 bg-slate-700/50 rounded text-slate-300">${sizeGB}</span>
+                            </div>
+                        </div>
+                        <p class="text-sm text-slate-300 mt-3 flex-grow">${model.description || 'Best-in-class model for its specific task domain.'}</p>
+                    </div>`;
+            });
+            listElement.innerHTML = html;
+        }
+
+        function displayBlogPosts() {
+            const container = document.getElementById('blog-posts-container');
+            if (!container) return;
+            const posts = [
+                 { title: "Update: VNC Victory & Agent Vision Prep", date: "Easter Weekend / 4/20 Update - April 20, 2025", link: "progress-4-18-25-update.html", excerpt: "Happy Easter weekend / 4/20! While some might be hunting eggs or enjoying the holiday haze, we've made significant progress with GPU-accelerated remote desktop and model optimizations..." },
+                 { title: "Project Avocado: Month 1 Recap", date: "April 6, 2025", link: "progress-month-1.html", excerpt: "From bare metal Arch Linux to a multi-model AI platform with custom APIs, a Discord bot, and web dashboard integration..." }
+            ];
+
+            if (posts.length === 0) { container.innerHTML = `<div class="content-card text-center text-slate-400 col-span-full py-8">No updates posted yet.</div>`; return; }
+            let html = '';
+            posts.forEach(post => {
+                html += `
+                    <a href="${post.link}" class="blog-card content-card block hover:border-blue-500/50 group">
+                        <h4 class="text-xl font-semibold text-white mb-1 group-hover:text-blue-300 transition-colors">${post.title}</h4>
+                        <p class="text-xs text-slate-500 mb-3">${post.date}</p>
+                        <p class="text-sm text-slate-300 mb-4">${post.excerpt}</p>
+                        <span class="inline-block text-sm text-blue-400 font-medium group-hover:text-blue-300 transition-colors"> Read More → </span>
+                    </a>`;
+            });
+            container.innerHTML = html;
+        }
+
+        // --- Utility Functions ---
+        function setText(id, text) { const element = document.getElementById(id); if (element) element.textContent = text; else console.warn(`Element ID not found: ${id}`); }
+
+        // --- Legacy Button ---
+        function setupLegacyButtonListener() {
+             const releaseBtn = document.getElementById('release-vram');
+             if (releaseBtn) { releaseBtn.addEventListener('click', () => { console.log("Hidden 'Release VRAM' button clicked."); alert("Legacy VRAM Release Triggered (Placeholder - No action performed)."); }); }
+        }
+    </script>
+</body>
+</html>
+`
